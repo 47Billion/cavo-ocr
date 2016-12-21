@@ -15,6 +15,8 @@ curl -XPOST -d '{"callback":"https://dev-api.gotuktuk.in/rest/o/v1/cb","srcFile"
 curl -XPOST -d '{"callback":"https://dev-api.gotuktuk.in/rest/o/v1/cb","srcFile": "http://solutions.weblite.ca/pdfocrx/scansmpl.pdf", "destFile":"dev7"}' -H 'content-type:application/json' <hostname>/rest/files
 ```
 
+#Instructions for getting up an instance
+
 ## Build docker
 docker build -t cavo-ocr .
 
