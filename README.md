@@ -14,7 +14,7 @@ docker run -d --name cavo-ocr -p 80:80 -p 8090:8090 cavo-ocr production b0a6c855
 ## Run docker with mounted host directory to docker
 docker run -d --name cavo-ocr -v /path/to/hostmachine/directory:/path/to/docker/directory -p 80:80 -p 8090:8090 cavo-ocr production b0a6c855dca8548243707ea4552a7015ca392fad
 
-example - docker run -d --name cavo-ocr -v /home/devendra:/var/log/ocr -p 8092:80 -p 8090:8090 cavo-ocr production b0a6c855dca8548243707ea4552a7015ca392fad
+example - docker run -d --name cavo-ocr -v /home/devendra:/var/log/ocr -p 80:80 -p 8090:8090 cavo-ocr production b0a6c855dca8548243707ea4552a7015ca392fad
 
 ## Get inside docker machine
 docker exec -it cavo-ocr bash
