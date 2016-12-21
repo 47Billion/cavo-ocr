@@ -30,4 +30,7 @@ curl -XPOST -d '{"callback":"https://dev-api.gotuktuk.in/rest/o/v1/cb","srcFile"
 
 #For pdf hosted at some url
 curl -XPOST -d '{"callback":"https://dev-api.gotuktuk.in/rest/o/v1/cb","srcFile": "http://solutions.weblite.ca/pdfocrx/scansmpl.pdf", "destFile":"dev7"}' -H 'content-type:application/json' <hostname>/rest/files
+
+#For getting output file in mounted location
+curl -XPOST -d '{"callback":"https://dev-api.gotuktuk.in/rest/o/v1/cb","srcFile": "http://solutions.weblite.ca/pdfocrx/scansmpl.pdf", "destFile":"/var/log/ocr/dest2"}' -H 'content-type:application/json' localhost:8090/rest/files
 ```
