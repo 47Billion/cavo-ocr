@@ -13,6 +13,8 @@ curl -XPOST -d '{"callback":"https://dev-api.gotuktuk.in/rest/o/v1/cb","srcFile"
 ## Build docker
 docker build -t cavo-ocr .
 
-docker run -d --name cavo-ocr -p 8095:80 -p 8090:8090 cavo-ocr production b0a6c855dca8548243707ea4552a7015ca392fad
+## Run docker
+docker run -d --name cavo-ocr -p 80:80 -p 8090:8090 cavo-ocr production b0a6c855dca8548243707ea4552a7015ca392fad
 
+## Get inside docker machine
 docker exec -it cavo-ocr bash

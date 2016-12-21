@@ -18,6 +18,6 @@ pm2 start ocr.js -i 1
 
 cp /var/www/api/default /etc/nginx/sites-enabled/
 
-/etc/init.d/nginx start
+/etc/init.d/nginx restart
 
 tail -f /etc/issue
