@@ -1,0 +1,8 @@
+{
+  "logger": {
+    "level": "debug",
+    "filename": "server.log",
+    "errorLogFile": "error.log",
+    "handleExceptions": true
+  }
+}
