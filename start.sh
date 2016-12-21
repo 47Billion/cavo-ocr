@@ -16,4 +16,8 @@ npm install
 echo "pm2 start ocr.js"
 pm2 start ocr.js -i 1
 
+cp /var/www/api/default /etc/nginx/sites-enabled/
+
+/etc/init.d/nginx start
+
 tail -f /etc/issue
