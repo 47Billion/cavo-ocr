@@ -23,7 +23,7 @@ app.use(morgan('dev')); // log requests to the console
 app.use(bodyParser.urlencoded({extended: true}));
 app.use(bodyParser.json());
 
-var port = process.env.PORT || 8090; // set our port
+var port = config.app.port || 8090; // set our port
 
 //Convert Command
 //convert -density 300 338bae49-0f25-4fcc-8766-9c4626f21eff.pdf -depth 8 -background white -flatten +matte foo.tiff
