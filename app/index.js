@@ -14,7 +14,7 @@ var uuid = require('uuid');
 var request = require('request');
 
 var exec = require('child_process').exec;
-
+var config = require('config');
 
 // configure app
 app.use(morgan('dev')); // log requests to the console
@@ -58,102 +58,148 @@ router.route('/files')
         var input = req.body || {};
         log.info('=>input', input);
 
-        //Check if file needs to be downloaded?
-        if ((input.srcFile.indexOf('https://') === 0) || (input.srcFile.indexOf('http://') === 0)) {
-            var re = /(?:\.([^.]+))?$/;
-            var ext = re.exec(input.srcFile)[1];
-            var fileName = uuid.v4() + "." + ext;
-            var file = fs.createWriteStream(fileName);
-
-            request(input.srcFile)
-                .on('end', function () {
-                    log.info('=>file downloaded', input.srcFile);
-                    input._srcFile = input.srcFile;
-                    input.srcFile = fileName;
-                    determineFileExtAndProceed(input);
-                })
-                .on('error', function (err) {
-                    log.info('=>Failed to download file', input, err);
-                    //Invoke callback if any
-                    notifyOnCallbackUrl(input.callback, 'failure');
-                })
-                .pipe(fs.createWriteStream(fileName))
-
-
-        } else if (input.srcFile.indexOf('file://') === 0) {
-            input.srcFile = input.srcFile.replace('file://', '');
-            determineFileExtAndProceed(input);
-        } else {
-            log.info('=>File protocol not identified considering a local file...', input.srcFile);
-            determineFileExtAndProceed(input);
-        }
+        _doOcr(input);
 
         res.json({message: 'Request accepted!'});
     });
 
-
-// REGISTER OUR ROUTES -------------------------------
 app.use('/rest', router);
 
-// START THE SERVER
-// =============================================================================
 app.listen(port);
+
 log.info('Server started on port ' + port);
 
-function determineFileExtAndProceed(input) {
-    //Convert the file to tif in case the input is a pdf
+
+var STATUS_FAILED = 'failed',
+    STATUS_OK = 'ok';
+
+function _doOcr(input) {
+    var protocol = _determineProtocol(input.srcFile)
     var re = /(?:\.([^.]+))?$/;
     var ext = re.exec(input.srcFile)[1];
 
-    if (ext === "pdf") { //Convert to .tiff using imagemagick
-
-        var tiffFileName = uuid.v4() + '.tiff'
-
-        convertToTiff(input, tiffFileName, function (err, tifFilePath) {
-            if (err) {
-                log.info('=>Failed to convert pdf to tiff');
-                //Invoke callback if any
-                notifyOnCallbackUrl(input.callback, 'failure');
-                return;
-            }
-            input._srcFile = input.srcFile;
-            input.srcFile = tifFilePath;
-            processFile(input);
-        })
-    } else {
-        processFile(input);
+    switch (protocol) {
+        case 'https':
+        case 'http':
+            _downloadAndOCR(input, ext);
+            break;
+        case 'file':
+            input.srcFile = input.srcFile.replace('file://', '');
+        default:
+            _ocrLocalFile(input, ext);
     }
 }
 
-//Use tesseract to convert the input file into searchable pdf
-function processFile(input) {
-    var options = {
-        l: 'eng',
-        // psm: 6,
-        config: 'pdf',
-        outputFile: input.destFile || 'out',
-        binary: '/usr/local/bin/tesseract'
-    };
-    tesseract.process(input.srcFile, options, function (err, text) {
+function _determineProtocol(srcFile) {
+    if (srcFile.indexOf('https://') === 0) {
+        return 'https';
+    }
+
+    if (srcFile.indexOf('http://') === 0) {
+        return 'http';
+    }
+    if (srcFile.indexOf('file://') === 0) {
+        return 'file'
+    }
+
+    return '';
+}
+
+function _downloadAndOCR(input, ext) {
+    var fileName = uuid.v4() + "." + ext;
+    _downloadFile(input.srcFile, fileName, function onDownloadComplete(err) {
+
         if (err) {
-            //Invoke callback if any
-            notifyOnCallbackUrl(input.callback, 'failure');
-            return log.error(err);
-        } else {
-            log.info('==>tessearct command completed', text);
-            log.info('=>deleting', input.srcFile)
-            fs.unlink(input.srcFile)
-            if (input._srcFile) {
-                log.info('=>deleting', input._srcFile)
-                if (fs.existsSync(input._srcFile)) {
-                    fs.unlink(input._srcFile)
-                }
-            }
-            //Invoke callback if any
-            notifyOnCallbackUrl(input.callback, 'success');
+            log.error('=>onDownloadComplete', input, err);
+            return notifyOnCallbackUrl(input.callback, STATUS_FAILED);
         }
+
+        input.srcFile = fileName;
+
+        _determineFileExtAndProceed(input, ext, function onOcrComplete(err, srcFile, intermediateTiffFile) {
+            notifyOnCallbackUrl(input.callback, err ? STATUS_FAILED : STATUS_OK, function onNotifyCBUrl(err) {
+
+                if (err) {
+                    log.error('=>onNotifyCBUrl', input, err);
+                }
+                log.info('=>_downloadAndOCR DONE', input.destFile);
+
+                //Delete intermediate files
+                if (srcFile && fs.existsSync(srcFile)) {
+                    fs.unlink(srcFile)
+                }
+
+                if (intermediateTiffFile && fs.existsSync(intermediateTiffFile)) {
+                    fs.unlink(intermediateTiffFile)
+                }
+            });
+        });
     });
 }
+
+function _ocrLocalFile(input, ext) {
+    _determineFileExtAndProceed(input, ext, function onOcrComplete(err, srcFile, intermediateTiffFile) {
+        notifyOnCallbackUrl(input.callback, err ? STATUS_FAILED : STATUS_OK, function onNotifyCBUrl(err) {
+            //Delete intermediate files
+            if (err) {
+                log.error('=>onNotifyCBUrl', input, err);
+            }
+
+            log.info('=>_ocrLocalFile DONE', input.destFile);
+            if (intermediateTiffFile && fs.existsSync(intermediateTiffFile)) {
+                fs.unlink(intermediateTiffFile)
+            }
+        });
+    });
+}
+
+function notifyOnCallbackUrl(url, status, cb) {
+
+    if (!url) return cb ? cb() : null;
+
+    url += '?status=' + status
+    request(url, function (error, response, body) {
+        if (error) {
+            cb && cb(error)
+        }
+        cb && cb();
+    })
+}
+
+function _downloadFile(srcFile, fileName, cb) {
+    request(srcFile)
+        .on('end', function () {
+            log.info('=>file downloaded', srcFile);
+            cb();
+        })
+        .on('error', function (err) {
+            log.error('=>Failed to download file', input, err);
+            cb(err);
+        })
+        .pipe(fs.createWriteStream(fileName));
+}
+
+function _determineFileExtAndProceed(input, ext, cb) {
+    if (ext !== "pdf") {
+        return processFile(input, function (err) {
+            cb(err, input.srcFile, null);
+        });
+    }
+    //Convert to .tiff using imagemagick
+    var tiffFileName = uuid.v4() + '.tiff'
+    convertToTiff(input, tiffFileName, function (err) {
+        if (err) {
+            log.info('=>Failed to convert pdf to tiff');
+            return cb(err, input.srcFile, tiffFileName);
+        }
+        input._srcFile = input.srcFile;
+        input.srcFile = tiffFileName;
+        processFile(input, function (err) {
+            cb(err, input._srcFile, tiffFileName);
+        });
+    })
+}
+
 
 function convertToTiff(input, tiffFileName, cb) {
     var cmd = 'convert -density 300 ' + input.srcFile + ' -depth 8 ' + tiffFileName;
@@ -161,32 +207,23 @@ function convertToTiff(input, tiffFileName, cb) {
     //Execute imagemagick convert command in order to convert the pdf into tiff file
     exec(cmd, function (err, stdout, stderr) {
         if (err) {
-            log.info('=>Failed to convert file to tiff', err);
-            //Invoke callback if any
-            notifyOnCallbackUrl(input.callback, 'failure');
-            return (err)
+            log.error('=>Failed to convert file to tiff', err);
+            return cb(err)
         }
-        log.info('convertToTiff success');
-        log.info('=>deleting', input.srcFile)
-        fs.unlink(input.srcFile)
-        input.srcFile = tiffFileName;
+        log.info('convertToTiff success', tiffFileName);
         cb(null, tiffFileName)
     });
 }
 
-//Call the callback url with status of the request
-//One can pass the identifier for the request in path param in order to identify their request once callback
-//is invoked
-function notifyOnCallbackUrl(url, status, cb) {
-    if (!url) return;
-    url += '?status=' + status
-    request(url, function (error, response, body) {
-        if (error) {
-            //log.info(body) // Show the HTML for the Google homepage.
-            cb && cb(error)
-        }
-        cb && cb();
-    })
+
+//Use tesseract to convert the input file into searchable pdf
+function processFile(input, cb) {
+    var options = {
+        l: 'eng',
+        config: 'pdf',
+        outputFile: input.destFile || 'out',
+        binary: '/usr/local/bin/tesseract'
+    };
+
+    tesseract.process(input.srcFile, options, cb);
 }
-
-
