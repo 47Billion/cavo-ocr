@@ -167,7 +167,7 @@ function _downloadFile(srcFile, fileName, cb) {
             cb();
         })
         .on('error', function (err) {
-            log.error('=>Failed to download file', input, err);
+            log.error('=>Failed to download file', srcFile, fileName, err);
             cb(err);
         })
         .pipe(fs.createWriteStream(fileName));
@@ -175,7 +175,8 @@ function _downloadFile(srcFile, fileName, cb) {
 
 function _determineFileExtAndProceed(input, ext, cb) {
     if (ext !== "pdf") {
-        return processFile(input, function (err) {
+        return processFile(input, function onProcessComplete(err) {
+            log.debug('=>onProcessComplete', input);
             cb(err, input.srcFile, null);
         });
     }
@@ -188,7 +189,8 @@ function _determineFileExtAndProceed(input, ext, cb) {
         }
         input._srcFile = input.srcFile;
         input.srcFile = tiffFileName;
-        processFile(input, function (err) {
+        processFile(input, function onProcessComplete(err) {
+            log.debug('=>onProcessComplete', input);
             cb(err, input._srcFile, tiffFileName);
         });
     })
@@ -212,6 +214,7 @@ function convertToTiff(input, tiffFileName, cb) {
 
 //Use tesseract to convert the input file into searchable pdf
 function processFile(input, cb) {
+    log.debug('=>processFile', input);
     var options = {
         l: 'eng',
         config: 'pdf',
