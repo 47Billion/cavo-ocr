@@ -61,7 +61,7 @@ RUN apt-get update
 
 RUN apt-get install -y libleptonica-dev
 
-#Get specific commit from tesseract
+#Get specific commit from tesseract for date 21-12-2016
 RUN git clone https://github.com/tesseract-ocr/tesseract.git && cd tesseract && git checkout df8dcf18347e6cdc1110b67e58cbd6ca1150f7d2 . && ./autogen.sh && ./configure && make && make install && ldconfig && cd ..
 
 #RUN apt-get install -y tesseract-ocr
