@@ -41,12 +41,9 @@ RUN apt-get install -y -q --no-install-recommends \
 
 RUN apt-get install -y  python-software-properties
 
-RUN add-apt-repository ppa:nginx/stable
-
 RUN apt-get update
 
 RUN apt-get -y upgrade
-RUN apt-get install -y nginx-full
 
 #Install tesseract and imagemagick
 RUN apt-get install -y imagemagick
@@ -64,18 +61,12 @@ RUN apt-get update
 
 RUN apt-get install -y libleptonica-dev
 
-RUN git clone https://github.com/tesseract-ocr/tesseract.git && cd tesseract && ./autogen.sh && ./configure && make && make install && ldconfig && cd ..
+#RUN git clone https://github.com/tesseract-ocr/tesseract.git && cd tesseract && ./autogen.sh && ./configure && make && make install && ldconfig && cd ..
 
-ENV TESSDATA_PREFIX /usr/local/share/tessdata
+RUN apt-get install -y tesseract-ocr
 
-#download data files for tesseract
-RUN wget https://github.com/tesseract-ocr/tessdata/raw/master/eng.traineddata -P /usr/local/share/tessdata/
-RUN wget https://github.com/tesseract-ocr/tessdata/raw/master/osd.traineddata -P /usr/local/share/tessdata/
-
-
-# RUN apt-get install -y    nginx-full
 RUN apt-get -y autoclean
-RUN rm -rf /var/lib/apt/lists/* && rm /etc/nginx/sites-enabled/default
+RUN rm -rf /var/lib/apt/lists/*
 
 ENV NVM_DIR /usr/local/nvm
 ENV NODE_VERSION 4.5.0
@@ -92,7 +83,6 @@ ENV NODE_PATH $NVM_DIR/versions/node/v$NODE_VERSION/lib/node_modules
 ENV PATH      $NVM_DIR/versions/node/v$NODE_VERSION/bin:$PATH
 
 # Create Directory
-RUN mkdir -p /var/www/app
 RUN mkdir -p /var/www/api
 # Set the Log Directory
 RUN mkdir -p /var/log/ocr

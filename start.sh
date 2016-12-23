@@ -8,16 +8,12 @@ export NODE_ENV=$1
 # git clone server-configs
 cd /var/www/api
 git clone https://$2@github.com/47Billion/cavo-ocr.git .
-#git checkout $1
-#git pull
+git checkout $1
+git pull
 
 npm install
 
 echo "pm2 start ocr.js"
 pm2 start ocr.js -i 1
-
-cp /var/www/api/default /etc/nginx/sites-enabled/
-
-/etc/init.d/nginx restart
 
 tail -f /etc/issue

@@ -38,12 +38,6 @@ var port = config.app.port || 8090; // set our port
 // create our router
 var router = express.Router();
 
-// middleware to use for all requests
-router.use(function (req, res, next) {
-    // do logging
-    log.info('Something is happening.');
-    next();
-});
 
 // test route to make sure everything is working (accessed at GET http://localhost:8080/api)
 router.get('/', function (req, res) {
