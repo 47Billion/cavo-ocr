@@ -148,7 +148,8 @@ function _ocrLocalFile(input, ext) {
 }
 
 function notifyOnCallbackUrl(url, status, cb) {
-
+    log.debug('=>notifyOnCallbackUrl', url, status);
+    
     if (!url) return cb ? cb() : null;
 
     url += '?status=' + status
