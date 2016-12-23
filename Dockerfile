@@ -66,9 +66,6 @@ RUN apt-get install -y libleptonica-dev
 
 RUN git clone https://github.com/tesseract-ocr/tesseract.git && cd tesseract && ./autogen.sh && ./configure && make && make install && ldconfig && cd ..
 
-#RUN apt-get install -y tesseract-ocr
-#RUN apt-get install -y tesseract-ocr-eng
-#RUN mkdir /usr/local/share/tessdata
 ENV TESSDATA_PREFIX /usr/local/share/tessdata
 
 #download data files for tesseract
@@ -104,12 +101,6 @@ WORKDIR /var/www
 
 # Install PM2
 RUN npm install pm2 -g
-
-# git repo crontab sh
-RUN echo "* * * * * root /bin/bash /var/www/publicpages.sh  >> /var/log/cron.log 2>&1" >> /etc/crontab
-
-# Create the log file to be able to run tail
-RUN touch /var/log/cron.log
 
 # add start.sh script
 ADD start.sh /var/www
