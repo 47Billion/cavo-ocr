@@ -61,9 +61,19 @@ RUN apt-get update
 
 RUN apt-get install -y libleptonica-dev
 
-#RUN git clone https://github.com/tesseract-ocr/tesseract.git && cd tesseract && ./autogen.sh && ./configure && make && make install && ldconfig && cd ..
+#Get specific commit from tesseract
+RUN git clone https://github.com/tesseract-ocr/tesseract.git && cd tesseract && git checkout df8dcf18347e6cdc1110b67e58cbd6ca1150f7d2 . && ./autogen.sh && ./configure && make && make install && ldconfig && cd ..
 
-RUN apt-get install -y tesseract-ocr
+#RUN apt-get install -y tesseract-ocr
+#RUN apt-get install -y tesseract-ocr-eng
+#RUN mkdir /usr/local/share/tessdata
+ENV TESSDATA_PREFIX /usr/local/share/tessdata
+
+#download data files for tesseract
+RUN wget https://github.com/tesseract-ocr/tessdata/raw/master/eng.traineddata -P /usr/local/share/tessdata/
+RUN wget https://github.com/tesseract-ocr/tessdata/raw/master/osd.traineddata -P /usr/local/share/tessdata/
+
+#RUN apt-get install -y tesseract-ocr
 
 RUN apt-get -y autoclean
 RUN rm -rf /var/lib/apt/lists/*
