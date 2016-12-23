@@ -177,6 +177,10 @@ function _downloadFile(srcFile, fileName, cb) {
 function _determineFileExtAndProceed(input, ext, cb) {
     if (ext !== "pdf") {
         return processFile(input, function onProcessComplete(err) {
+            if (err) {
+                log.debug('=>onProcessComplete', input, err);
+                return cb(err, input._srcFile, tiffFileName);
+            }
             log.debug('=>onProcessComplete', input);
             cb(err, input.srcFile, null);
         });
@@ -191,6 +195,10 @@ function _determineFileExtAndProceed(input, ext, cb) {
         input._srcFile = input.srcFile;
         input.srcFile = tiffFileName;
         processFile(input, function onProcessComplete(err) {
+            if (err) {
+                log.debug('=>onProcessComplete', input, err);
+                return cb(err, input._srcFile, tiffFileName);
+            }
             log.debug('=>onProcessComplete', input);
             cb(err, input._srcFile, tiffFileName);
         });
