@@ -164,6 +164,7 @@ function _downloadFile(srcFile, fileName, cb) {
     request(srcFile)
         .on('end', function () {
             log.info('=>file downloaded', srcFile);
+
             cb();
         })
         .on('error', function (err) {
@@ -219,7 +220,7 @@ function processFile(input, cb) {
         l: 'eng',
         config: 'pdf',
         outputFile: input.destFile || 'out',
-        binary: '/usr/local/bin/tesseract'
+        binary: 'tesseract'
     };
 
     tesseract.process(input.srcFile, options, cb);
