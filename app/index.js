@@ -46,7 +46,7 @@ router.get('/', function (req, res) {
 
 // on routes that end in /files
 // ----------------------------------------------------
-router.route('/api/b/convert')
+router.route('/b/convert')
     .post(function (req, res) {
         var input = req.body || {};
         input = {srcFile: input.source, callback: input.cb, destFile: input.destination};
@@ -71,7 +71,7 @@ router.route('/api/b/convert')
 var STATUS_OK = 'OK';
 var STATUS_FAILED = 'FAILED';
 
-router.route('/api/nb/convert')
+router.route('/nb/convert')
     .post(function (req, res) {
         var input = req.body || {};
         input = {srcFile: input.source, callback: input.cb, destFile: input.destination};
@@ -95,7 +95,7 @@ router.route('/api/nb/convert')
         });
     });
 
-app.use('/rest', router);
+app.use('/api', router);
 
 app.listen(port);
 
