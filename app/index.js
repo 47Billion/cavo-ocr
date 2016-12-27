@@ -52,9 +52,15 @@ router.route('/files')
         var input = req.body || {};
         log.info('=>input', input);
 
-        _doOcr(input);
+        _doOcr(input, function (err) {
+            if (err) {
+                log.error('=>onCompleteOcr', err);
+                return res.status(500).json({message: 'Request failed!'});
+            }
+            res.json({message: 'Request accepted!'});
+        });
 
-        res.json({message: 'Request accepted!'});
+
     });
 
 app.use('/rest', router);
@@ -63,11 +69,7 @@ app.listen(port);
 
 log.info('Server started on port ' + port);
 
-
-var STATUS_FAILED = 'failed',
-    STATUS_OK = 'ok';
-
-function _doOcr(input) {
+function _doOcr(input, cb) {
     var protocol = _determineProtocol(input.srcFile)
     var re = /(?:\.([^.]+))?$/;
     var ext = re.exec(input.srcFile)[1];
@@ -75,12 +77,12 @@ function _doOcr(input) {
     switch (protocol) {
         case 'https':
         case 'http':
-            _downloadAndOCR(input, ext);
+            _downloadAndOCR(input, ext, cb);
             break;
         case 'file':
             input.srcFile = input.srcFile.replace('file://', '');
         default:
-            _ocrLocalFile(input, ext);
+            _ocrLocalFile(input, ext, cb);
     }
 }
 
@@ -99,66 +101,48 @@ function _determineProtocol(srcFile) {
     return '';
 }
 
-function _downloadAndOCR(input, ext) {
+function _downloadAndOCR(input, ext, cb) {
     var fileName = uuid.v4() + "." + ext;
     _downloadFile(input.srcFile, fileName, function onDownloadComplete(err) {
 
         if (err) {
             log.error('=>onDownloadComplete', input, err);
-            return notifyOnCallbackUrl(input.callback, STATUS_FAILED);
+            return cb(err);
         }
 
         input.srcFile = fileName;
 
         _determineFileExtAndProceed(input, ext, function onOcrComplete(err, srcFile, intermediateTiffFile) {
-            notifyOnCallbackUrl(input.callback, err ? STATUS_FAILED : STATUS_OK, function onNotifyCBUrl(err) {
-
-                if (err) {
-                    log.error('=>onNotifyCBUrl', input, err);
-                }
-                log.info('=>_downloadAndOCR DONE', input.destFile);
-
-                //Delete intermediate files
-                if (srcFile && fs.existsSync(srcFile)) {
-                    fs.unlink(srcFile)
-                }
-
-                if (intermediateTiffFile && fs.existsSync(intermediateTiffFile)) {
-                    fs.unlink(intermediateTiffFile)
-                }
-            });
-        });
-    });
-}
-
-function _ocrLocalFile(input, ext) {
-    _determineFileExtAndProceed(input, ext, function onOcrComplete(err, srcFile, intermediateTiffFile) {
-        notifyOnCallbackUrl(input.callback, err ? STATUS_FAILED : STATUS_OK, function onNotifyCBUrl(err) {
-            //Delete intermediate files
             if (err) {
-                log.error('=>onNotifyCBUrl', input, err);
+                log.error('=>onOcrComplete', input, err);
             }
 
-            log.info('=>_ocrLocalFile DONE', input.destFile);
+            //Delete intermediate files
+            if (srcFile && fs.existsSync(srcFile)) {
+                fs.unlink(srcFile)
+            }
+
             if (intermediateTiffFile && fs.existsSync(intermediateTiffFile)) {
                 fs.unlink(intermediateTiffFile)
             }
+            cb(err);
         });
     });
 }
 
-function notifyOnCallbackUrl(url, status, cb) {
-    log.debug('=>notifyOnCallbackUrl', url, status);
+function _ocrLocalFile(input, ext, cb) {
+    _determineFileExtAndProceed(input, ext, function onOcrComplete(err, srcFile, intermediateTiffFile) {
 
-    if (!url) return cb ? cb() : null;
-
-    url += '?status=' + status
-    request(url, function (error, response, body) {
-        if (error) {
-            cb && cb(error)
+        if (err) {
+            log.error('=>onOcrComplete', input, err);
         }
-        cb && cb();
-    })
+        //Delete intermediate files
+        log.info('=>_ocrLocalFile DONE', input.destFile);
+        if (intermediateTiffFile && fs.existsSync(intermediateTiffFile)) {
+            fs.unlink(intermediateTiffFile)
+        }
+        cb(err);
+    });
 }
 
 function _downloadFile(srcFile, fileName, cb) {
