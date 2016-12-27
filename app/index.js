@@ -2,19 +2,19 @@
 // =============================================================================
 
 // call the packages we need
-var log = require('app/utils/logger')(module);
-var express = require('express');
-var bodyParser = require('body-parser');
-var app = express();
-var morgan = require('morgan');
-var tesseract = require('node-tesseract');
-var fs = require('fs');
-var http = require('http');
-var uuid = require('uuid');
-var request = require('request');
-
-var exec = require('child_process').exec;
-var config = require('config');
+var log = require('app/utils/logger')(module),
+    express = require('express'),
+    bodyParser = require('body-parser'),
+    app = express(),
+    morgan = require('morgan'),
+    tesseract = require('node-tesseract'),
+    fs = require('fs'),
+    http = require('http'),
+    uuid = require('uuid'),
+    request = require('request'),
+    path = require('path'),
+    exec = require('child_process').exec,
+    config = require('config');
 
 // configure app
 app.use(morgan('dev')); // log requests to the console
@@ -52,16 +52,20 @@ router.route('/api/b/convert')
         input = {srcFile: input.source, callback: input.cb, destFile: input.destination};
 
         log.info('=>input', input);
-
-        _doOcr(input, function (err) {
+        //Check for valid file source and destinations
+        _hasValidPaths(input.srcFile, input.destFile, function (err) {
             if (err) {
-                log.error('=>onCompleteOcr', err);
-                return res.status(500).json({message: 'Request failed!'});
+                return res.status(400).json(err);
             }
-            res.json({message: 'Request completed!'});
+
+            _doOcr(input, function (err) {
+                if (err) {
+                    log.error('=>onCompleteOcr', err);
+                    return res.status(500).json({message: 'Request failed!'});
+                }
+                res.json({message: 'Request completed!'});
+            });
         });
-
-
     });
 
 var STATUS_OK = 'OK';
@@ -75,6 +79,9 @@ router.route('/api/nb/convert')
 
         //Check for valid file source and destinations
         _hasValidPaths(input.srcFile, input.destFile, function (err) {
+            if (err) {
+                return res.status(400).json(err);
+            }
             _doOcr(input, function (err) {
                 log.error('=>onCompleteOcr', err);
                 if (err) {
@@ -260,5 +267,28 @@ function notifyOnCallbackUrl(url, status, cb) {
 }
 
 function _hasValidPaths(srcFile, destFile, cb) {
-    
+    if (!srcFile || !destFile) {
+        return cb({message: "Missing source or destination path"});
+    }
+
+    //validate source file
+    var protocol = _determineProtocol(srcFile)
+    switch (protocol) {
+        case 'https':
+        case 'http':
+
+            break;
+        case 'file':
+        default:
+            if (!fs.existsSync(srcFile)) {
+                return cb({message: "Missing source file"});
+            }
+    }
+
+    //validate destination directory
+    if (!fs.existsSync(destFile)) {
+        return cb({message: "Missing destination file's parent directory"});
+    }
+
+    cb()
 }
