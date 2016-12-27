@@ -286,7 +286,7 @@ function _hasValidPaths(srcFile, destFile, cb) {
     }
 
     //validate destination directory
-    if (!fs.existsSync(destFile)) {
+    if (!fs.existsSync(path.basename(destFile))) {
         return cb({message: "Missing destination file's parent directory"});
     }
 
