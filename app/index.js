@@ -47,7 +47,6 @@ router.get('/', function (req, res) {
 // on routes that end in /files
 // ----------------------------------------------------
 router.route('/files/sync')
-    // create a bear (accessed at POST http://localhost:8080/bears)
     .post(function (req, res) {
         var input = req.body || {};
         log.info('=>input', input);
@@ -63,8 +62,10 @@ router.route('/files/sync')
 
     });
 
+var STATUS_OK = 'OK';
+var STATUS_FAILED = 'FAILED';
+
 router.route('/files')
-    // create a bear (accessed at POST http://localhost:8080/bears)
     .post(function (req, res) {
         var input = req.body || {};
         log.info('=>input', input);
@@ -73,9 +74,9 @@ router.route('/files')
             log.error('=>onCompleteOcr', err);
             if (err) {
 
-                return;
-                //return res.status(500).json({message: 'Request failed!'});
+                return notifyOnCallbackUrl(input.callback, STATUS_FAILED);
             }
+            return notifyOnCallbackUrl(input.callback, STATUS_OK);
         });
 
         res.json({message: 'Request accepted!'});
@@ -235,4 +236,19 @@ function processFile(input, cb) {
     };
 
     tesseract.process(input.srcFile, options, cb);
+}
+
+
+function notifyOnCallbackUrl(url, status, cb) {
+    log.debug('=>notifyOnCallbackUrl', url, status);
+
+    if (!url) return cb ? cb() : null;
+
+    url += '?status=' + status
+    request(url, function (error, response, body) {
+        if (error) {
+            cb && cb(error)
+        }
+        cb && cb();
+    })
 }
