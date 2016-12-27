@@ -46,7 +46,7 @@ router.get('/', function (req, res) {
 
 // on routes that end in /files
 // ----------------------------------------------------
-router.route('/files')
+router.route('/files/sync')
     // create a bear (accessed at POST http://localhost:8080/bears)
     .post(function (req, res) {
         var input = req.body || {};
@@ -57,10 +57,28 @@ router.route('/files')
                 log.error('=>onCompleteOcr', err);
                 return res.status(500).json({message: 'Request failed!'});
             }
-            res.json({message: 'Request accepted!'});
+            res.json({message: 'Request completed!'});
         });
 
 
+    });
+
+router.route('/files')
+    // create a bear (accessed at POST http://localhost:8080/bears)
+    .post(function (req, res) {
+        var input = req.body || {};
+        log.info('=>input', input);
+
+        _doOcr(input, function (err) {
+            log.error('=>onCompleteOcr', err);
+            if (err) {
+
+                return;
+                //return res.status(500).json({message: 'Request failed!'});
+            }
+        });
+
+        res.json({message: 'Request accepted!'});
     });
 
 app.use('/rest', router);
