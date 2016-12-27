@@ -32,7 +32,7 @@ var port = config.app.port || 8090; // set our port
 
 
 //Sample curl
-//curl -XPOST -d '{"callback":"https://google.com","srcFile": "http://www.sentryfile.com/forum/attachments//ImageOnly.pdf", "destFile":"out-pdf"}' -H 'content-type:application/json' localhost:8090/rest/files
+//curl -XPOST -d '{"cb":"https://google.com","source": "http://www.sentryfile.com/forum/attachments//ImageOnly.pdf", "destination":"out-pdf"}' -H 'content-type:application/json' localhost:8090/rest/files
 
 
 // create our router
@@ -46,9 +46,11 @@ router.get('/', function (req, res) {
 
 // on routes that end in /files
 // ----------------------------------------------------
-router.route('/files/sync')
+router.route('/api/b/convert')
     .post(function (req, res) {
         var input = req.body || {};
+        input = {srcFile: input.source, callback: input.cb, destFile: input.destination};
+
         log.info('=>input', input);
 
         _doOcr(input, function (err) {
@@ -65,21 +67,25 @@ router.route('/files/sync')
 var STATUS_OK = 'OK';
 var STATUS_FAILED = 'FAILED';
 
-router.route('/files')
+router.route('/api/nb/convert')
     .post(function (req, res) {
         var input = req.body || {};
+        input = {srcFile: input.source, callback: input.cb, destFile: input.destination};
         log.info('=>input', input);
 
-        _doOcr(input, function (err) {
-            log.error('=>onCompleteOcr', err);
-            if (err) {
+        //Check for valid file source and destinations
+        _hasValidPaths(input.srcFile, input.destFile, function (err) {
+            _doOcr(input, function (err) {
+                log.error('=>onCompleteOcr', err);
+                if (err) {
 
-                return notifyOnCallbackUrl(input.callback, STATUS_FAILED);
-            }
-            return notifyOnCallbackUrl(input.callback, STATUS_OK);
+                    return notifyOnCallbackUrl(input.callback, STATUS_FAILED);
+                }
+                return notifyOnCallbackUrl(input.callback, STATUS_OK);
+            });
+
+            res.json({message: 'Request accepted!'});
         });
-
-        res.json({message: 'Request accepted!'});
     });
 
 app.use('/rest', router);
@@ -251,4 +257,8 @@ function notifyOnCallbackUrl(url, status, cb) {
         }
         cb && cb();
     })
+}
+
+function _hasValidPaths(srcFile, destFile, cb) {
+    
 }
