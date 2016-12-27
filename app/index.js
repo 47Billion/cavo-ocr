@@ -245,7 +245,7 @@ function notifyOnCallbackUrl(url, status, cb) {
     if (!url) return cb ? cb() : null;
 
     url += '?status=' + status
-    request(url, function (error, response, body) {
+    request(url, function (error) {
         if (error) {
             cb && cb(error)
         }
