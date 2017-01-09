@@ -212,11 +212,15 @@ func processJob(job *Job) error {
 	extension := fileExtension(job.Source)
 	if extension == ".pdf" {
 		//Convert to tiff using imagemagick
-		if conversionErr := convertToTiff(job); conversionErr != nil {
+		if tiffName, conversionErr := convertToTiff(job); conversionErr != nil {
+			job.FilesToDelete.PushBack(job.Source)
 			return conversionErr
+		} else {
+			//Add source in list of files to be deleted after job completion
+			job.FilesToDelete.PushBack(job.Source)
+			job.Source = tiffName
 		}
-		//Add source in list of files to be deleted after job completion
-		job.FilesToDelete.PushBack(job.Source)
+
 	}
 
 	//Here we are having a file which can be processed by OCR tool
@@ -272,14 +276,15 @@ func fileExtension(url string) string {
 	return path.Ext(url)
 }
 
-func convertToTiff(job *Job) error {
+func convertToTiff(job *Job) (string, error) {
 	log.Println("=>convertToTiff", job)
 	tiffFileName := xid.New().String() + ".tiff"
 
 	cmdName := "convert"
 	cmdArgs := []string{"-density", "300", job.Source, "-depth", "8", tiffFileName}
 
-	return execCommand(cmdName, cmdArgs)
+	err := execCommand(cmdName, cmdArgs)
+	return tiffFileName, err
 }
 
 func doOcr(job *Job) error {
@@ -307,7 +312,7 @@ func execCommand(cmdName string, cmdArgs []string) error {
 	)
 	//	cmdName := "git"
 	//	cmdArgs := []string{"rev-parse", "--verify", "HEAD"}
-	log.Println("execCommand", cmdName,cmdArgs )
+	log.Println("execCommand", cmdName, cmdArgs)
 	if cmdOut, err = exec.Command(cmdName, cmdArgs...).Output(); err != nil {
 		log.Println("There was an error running command: ", err)
 		return err
