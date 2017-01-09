@@ -351,7 +351,7 @@ type Job struct {
 func init() {
 	f, err := os.OpenFile("/var/log/ocr/ocr.log", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
 	if err != nil {
-		t.Fatalf("error opening file: %v", err)
+		log.Fatalf("error opening file: %v", err)
 	}
 	defer f.Close()
 
