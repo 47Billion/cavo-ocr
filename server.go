@@ -10,23 +10,28 @@ import (
 	"os"
 	"os/exec"
 	"path"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/karlseguin/ccache"
 	"github.com/rs/xid"
 	"gopkg.in/gin-gonic/gin.v1"
+	"gopkg.in/go-playground/validator.v9"
 )
 
 const (
-	NO_OF_WORKERS    = 2 //Defualt worker count
-	MAX_QUEUE_LENGTH = 3 //At a time max MAX_QUEUE_LENGTH+NO_OF_WORKERS requests can be under process(3 in process+3 in queue)
-
 	STATUS_QUEUED     = "QUEUED"
 	STATUS_IN_PROCESS = "IN_PROCESS"
 	STATUS_COMPLETE   = "COMPLETE"
 	STATUS_ERRORED    = "ERRORED"
 )
+
+//Defualt worker count
+var NO_OF_WORKERS = 2
+
+//At a time max MAX_QUEUE_LENGTH+NO_OF_WORKERS requests can be under process(3 in process+3 in queue)
+var MAX_QUEUE_LENGTH = 3
 
 //Jobs queue
 var jobs chan *Job
@@ -36,6 +41,7 @@ var results chan *Job
 
 //Job status store
 var cache = ccache.New(ccache.Configure().MaxSize(1000).ItemsToPrune(100))
+var validation = validator.New()
 
 // Default Request Handler
 func convertHandler(ctx *gin.Context) {
@@ -45,8 +51,14 @@ func convertHandler(ctx *gin.Context) {
 	var job Job
 
 	if err := ctx.BindJSON(&job); nil != err {
-		log.Panic("=>convertHandler", err)
+		log.Println("=>convertHandler Invalid json", err)
 		ctx.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": "job queue limit exceeded"})
+		return
+	}
+
+	if validationErr := validation.Struct(job); nil != validationErr {
+		log.Println("=>convertHandler invalid input", validationErr)
+		ctx.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": validationErr.Error()})
 		return
 	}
 
@@ -58,7 +70,12 @@ func convertHandler(ctx *gin.Context) {
 
 	job.Id = jobId
 	job.FilesToDelete = list.New()
-	//	job.FilesToDelete.PushBack("hello.jpg")
+
+	if err := checkForValidSourceAndDestination(&job); nil != err {
+		log.Println("=>convertHandler invalid input source or destination", err)
+		ctx.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": err.Error()})
+		return
+	}
 
 	cache.Set(job.Id, &job, time.Minute*10)
 
@@ -83,6 +100,30 @@ func jobStatusHandler(ctx *gin.Context) {
 
 func main() {
 	log.Println("starting server...")
+	if len(os.Args) != 4 {
+		panic("USAGE [server WORKER_COUNT QUEUE_LENGTH PORT]")
+		return
+	}
+	if workerCount, err := strconv.Atoi(os.Args[1]); err != nil || workerCount > 9 {
+		panic("Invalid worker count specified must be an integer less than 9")
+		return
+	} else {
+		NO_OF_WORKERS = workerCount
+	}
+
+	if queueLength, err := strconv.Atoi(os.Args[2]); err != nil {
+		panic("Invalid queue length specified must be an integer")
+		return
+	} else {
+		MAX_QUEUE_LENGTH = queueLength
+	}
+
+	if port, err := strconv.Atoi(os.Args[3]); err != nil {
+		log.Println("Invalid port", port)
+		panic("Invalid port specified must be an integer")
+		return
+	}
+
 	router := gin.Default()
 	router.GET("/api/status", jobStatusHandler)
 	router.POST("/api/nb/convert", convertHandler)
@@ -102,8 +143,7 @@ func main() {
 	}
 
 	go resultProcessor(results)
-	log.Println("=>Server started.")
-	log.Fatal(http.ListenAndServe(":8585", router))
+	log.Fatal(http.ListenAndServe(":"+os.Args[3], router))
 	//http.ListenAndServe(":8585", nil)
 
 }
@@ -130,7 +170,7 @@ func worker(id int, jobs <-chan *Job, results chan<- *Job) {
 func resultProcessor(results <-chan *Job) {
 	// Finally we collect all the results of the work.
 	for result := range results {
-		log.Println("got result", result)
+		//		log.Println("got result", result)
 		filesToDelete := result.FilesToDelete
 		// Iterate through list and print its contents.
 		for e := filesToDelete.Front(); e != nil; e = e.Next() {
@@ -188,7 +228,6 @@ func determineProtocol(srcFile string) string {
 	if strings.Index(srcFile, "https://") == 0 {
 		return "https"
 	}
-
 	if strings.Index(srcFile, "http://") == 0 {
 		return "http"
 	}
@@ -252,8 +291,10 @@ func doOcr(job *Job) error {
 }
 
 func invokeCallback(j *Job) {
+	callbackUrl := j.Callback + "?jobId=" + j.Id + "status=" + j.Status
+	log.Println("=>invokeCallback", callbackUrl)
 	if len(j.Callback) != 0 {
-		http.Get(j.Callback + "?jobId=" + j.Id)
+		http.Get(callbackUrl)
 		return
 	}
 	log.Println("=>invokeCallback Callback not specified skipping...", j.Id)
@@ -275,12 +316,25 @@ func execCommand(cmdName string, cmdArgs []string) error {
 	return nil
 }
 
+func checkForValidSourceAndDestination(job *Job) error {
+	log.Println("=>checkForValidSourceAndDestination", job.Source, job.Destination)
+	if protocol := determineProtocol(job.Source); protocol == "file" || protocol == "" {
+		if _, err := os.Stat(job.Source); err != nil {
+			return errors.New("Could not read source file")
+		}
+	}
+	if _, err := os.Stat(path.Dir(job.Destination)); err != nil {
+		return errors.New("Could not read destination directory")
+	}
+	return nil
+}
+
 //Job data holder
 type Job struct {
 	Id            string     `json:"id"`
-	Source        string     `json:"source"`
-	Destination   string     `json:"destination"`
-	Callback      string     `json:"cb"`
-	Status        string     `json:"status"` //Can be QUEUE/PROGRESS/COMPLETE
-	FilesToDelete *list.List `json:"fDel"`
+	Source        string     `json:"source" validate:"required"`
+	Destination   string     `json:"destination" validate:"required"`
+	Callback      string     `json:"cb" validate:"url"`
+	Status        string     `json:"status"` //Can be QUEUED/IN_PROGRESS/COMPLETED/ERRORED
+	FilesToDelete *list.List `json:"-"`
 }
