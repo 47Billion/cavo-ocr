@@ -21,14 +21,24 @@ Response -
 ```
 
 2. Convert a local file -
-
 ``` curl
 curl -XPOST -H 'content-type:application/json' \
 -d '{"cb":"https://dev-api.gotuktuk.in/rest/o/v1/cb","source": "http://solutions.weblite.ca/pdfocrx/scansmpl.pdf", "destination":"/var/log/ocr/converted1"}' \
 'http://192.168.99.100:61004/api/nb/convert'
 ```
 Response -
-{"id":"b1pq03b9ukk00knrdpbg","status":"WAIT"}
+``` json
+{"id":"b1pq03b9ukk00knrdpbg","status":"PROCESS"}
+```
+
+3. Check job status -
+``` curl
+curl -XGET http://192.168.99.100:61004/api/status\?\id=b1pq2vb9ukk00knrdpd0
+```
+Response -
+``` json
+{"id":"b1pq03b9ukk00knrdpbg","status":"PROCESS"}
+```
 
 #Job Status codes
 STATUS_QUEUED     = "WAIT"
