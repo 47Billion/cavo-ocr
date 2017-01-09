@@ -304,6 +304,7 @@ func invokeCallback(j *Job) {
 			m.Set("id", j.Id)
 			m.Set("status", j.Status)
 			//callbackUrl := j.Callback + "?id=" + j.Id + "&status=" + j.Status
+			cbUrl.RawQuery = m.Encode()
 			callbackUrl := cbUrl.String()
 			log.Info("=>invokeCallback", callbackUrl)
 			http.Get(callbackUrl)
