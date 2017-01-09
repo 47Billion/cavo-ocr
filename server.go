@@ -343,7 +343,17 @@ type Job struct {
 	Id            string     `json:"id"`
 	Source        string     `json:"source" validate:"required"`
 	Destination   string     `json:"destination" validate:"required"`
-	Callback      string     `json:"cb" validate:"url"`
+	Callback      string     `json:"cb" validate:"omitempty,url"`
 	Status        string     `json:"status"` //Can be QUEUED/IN_PROGRESS/COMPLETED/ERRORED
 	FilesToDelete *list.List `json:"-"`
+}
+
+func init() {
+	f, err := os.OpenFile("/var/log/ocr/ocr.log", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+	if err != nil {
+		t.Fatalf("error opening file: %v", err)
+	}
+	defer f.Close()
+
+	log.SetOutput(f)
 }
