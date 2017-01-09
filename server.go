@@ -300,12 +300,17 @@ func invokeCallback(j *Job) {
 
 	if len(j.Callback) != 0 {
 		cbUrl := url.Parse(j.Callback)
-		cbUrl.Query().Set("id", j.Id)
-		cbUrl.Query().Set("status", j.Status)
-		//		callbackUrl := j.Callback + "?id=" + j.Id + "&status=" + j.Status
-		log.Info("=>invokeCallback", cbUrl.String())
-		http.Get(callbackUrl)
-		return
+		if m, err := url.ParseQuery(cbUrl.RawQuery); err == nil {
+			m.Set("id", j.Id)
+			m.Set("status", j.Status)
+			//callbackUrl := j.Callback + "?id=" + j.Id + "&status=" + j.Status
+			callbackUrl := cbUrl.String()
+			log.Info("=>invokeCallback", callbackUrl)
+			http.Get(callbackUrl)
+			return
+		} else {
+			log.Error("=>invokeCallback Invalid callback url", j.Callback, err)
+		}
 	}
 
 	log.Info("=>invokeCallback Callback not specified skipping...", j.Id)
