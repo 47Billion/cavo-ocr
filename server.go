@@ -21,10 +21,10 @@ import (
 )
 
 const (
-	STATUS_QUEUED     = "QUEUED"
-	STATUS_IN_PROCESS = "IN_PROCESS"
-	STATUS_COMPLETE   = "COMPLETE"
-	STATUS_ERRORED    = "ERRORED"
+	STATUS_QUEUED     = "WAIT"
+	STATUS_IN_PROCESS = "PROCESS"
+	STATUS_COMPLETE   = "FINISH"
+	STATUS_ERRORED    = "ERROR"
 )
 
 //Defualt worker count
@@ -79,11 +79,11 @@ func convertHandler(ctx *gin.Context) {
 		return
 	}
 
-	cache.Set(job.Id, &job, time.Minute*30)
+	cache.Set(job.Id, &job, time.Hour*2)
 
 	jobs <- &job
 	log.Info("=>Channel length", len(jobs))
-	ctx.JSON(http.StatusAccepted, gin.H{"status": "ok", "message": "request submitted", "data": job})
+	ctx.JSON(http.StatusAccepted, gin.H{"status": job.Status, "id": job.Id})
 }
 
 //Check for status of job
@@ -93,10 +93,10 @@ func jobStatusHandler(ctx *gin.Context) {
 	log.Info("=>jobStatusHandler", jobId)
 	if cacheItem := cache.Get(jobId); cacheItem != nil {
 		job := cache.Get(jobId).Value().(*Job)
-		ctx.JSON(http.StatusOK, gin.H{"status": "ok", "data": job})
+		ctx.JSON(http.StatusOK, gin.H{"status": job.Status, "id": job.Id})
 		return
 	}
-	ctx.JSON(http.StatusForbidden, gin.H{"status": "error", "message": "invlaid/job not found"})
+	ctx.JSON(http.StatusForbidden, gin.H{"message": "invlaid/job not found"})
 
 }
 
@@ -129,8 +129,6 @@ func main() {
 	router := gin.Default()
 	router.GET("/api/status", jobStatusHandler)
 	router.POST("/api/nb/convert", convertHandler)
-
-	//	http.HandleFunc("/api/convert", convertHandler)
 
 	// In order to use our pool of workers we need to send
 	// them work and collect their results. We make 2
@@ -298,7 +296,7 @@ func doOcr(job *Job) error {
 }
 
 func invokeCallback(j *Job) {
-	callbackUrl := j.Callback + "?jobId=" + j.Id + "&status=" + j.Status
+	callbackUrl := j.Callback + "?id=" + j.Id + "&status=" + j.Status
 	log.Info("=>invokeCallback", callbackUrl)
 	if len(j.Callback) != 0 {
 		http.Get(callbackUrl)
