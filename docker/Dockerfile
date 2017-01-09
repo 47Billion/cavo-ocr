@@ -4,9 +4,6 @@ FROM ubuntu:14.04
 # Replace shell with bash so we can source files
 RUN rm /bin/sh && ln -s /bin/bash /bin/sh
 
-# Set environment variables
-ENV apiDir /var/www/api
-
 # Run updates and install deps
 RUN apt-get update
 
