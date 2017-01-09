@@ -215,11 +215,9 @@ func processJob(job *Job) error {
 	if extension == ".pdf" {
 		//Convert to tiff using imagemagick
 		if tiffName, conversionErr := convertToTiff(job); conversionErr != nil {
-			job.FilesToDelete.PushBack(job.Source)
 			return conversionErr
 		} else {
 			//Add source in list of files to be deleted after job completion
-			job.FilesToDelete.PushBack(job.Source)
 			job.FilesToDelete.PushBack(tiffName)
 			job.Source = tiffName
 		}
