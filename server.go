@@ -299,8 +299,8 @@ func doOcr(job *Job) error {
 func invokeCallback(j *Job) {
 
 	if len(j.Callback) != 0 {
-		cbUrl := url.Parse(j.Callback)
-		if m, err := url.ParseQuery(cbUrl.RawQuery); err == nil {
+		if cbUrl, err := url.Parse(j.Callback); err == nil {
+			m, _ := url.ParseQuery(cbUrl.RawQuery)
 			m.Set("id", j.Id)
 			m.Set("status", j.Status)
 			//callbackUrl := j.Callback + "?id=" + j.Id + "&status=" + j.Status
