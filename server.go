@@ -155,6 +155,8 @@ func worker(id int, jobs <-chan *Job, results chan<- *Job) {
 		fmt.Println("worker", id, "started  job", j)
 		if err := processJob(j); err != nil {
 			j.Status = STATUS_ERRORED
+		} else {
+			j.Status = STATUS_COMPLETE
 		}
 
 		//		time.Sleep(time.Second * 10)
