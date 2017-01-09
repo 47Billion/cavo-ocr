@@ -13,11 +13,11 @@ import (
 	"strings"
 	"time"
 
+	log "./logger"
 	"github.com/karlseguin/ccache"
 	"github.com/rs/xid"
 	"gopkg.in/gin-gonic/gin.v1"
 	"gopkg.in/go-playground/validator.v9"
-	log "./logger"
 )
 
 const (
@@ -70,6 +70,7 @@ func convertHandler(ctx *gin.Context) {
 	}
 
 	job.Id = jobId
+	job.Status = STATUS_QUEUED
 	job.FilesToDelete = list.New()
 
 	if err := checkForValidSourceAndDestination(&job); nil != err {
