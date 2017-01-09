@@ -135,7 +135,7 @@ func main() {
 	// In order to use our pool of workers we need to send
 	// them work and collect their results. We make 2
 	// channels for this.
-	jobs = make(chan *Job, 3)
+	jobs = make(chan *Job, MAX_QUEUE_LENGTH)
 	results := make(chan *Job, 100)
 
 	// This starts up 3 workers, initially blocked
@@ -146,8 +146,6 @@ func main() {
 
 	go resultProcessor(results)
 	log.Error(http.ListenAndServe(":"+os.Args[3], router))
-	//http.ListenAndServe(":8585", nil)
-
 }
 
 //Worker to process from job queue
@@ -161,8 +159,8 @@ func worker(id int, jobs <-chan *Job, results chan<- *Job) {
 			j.Status = STATUS_COMPLETE
 		}
 
-		//		time.Sleep(time.Second * 10)
-		//		j.Status = STATUS_COMPLETE
+		//time.Sleep(time.Second * 10)
+		//j.Status = STATUS_COMPLETE
 		log.Info("worker", id, "finished job", j)
 		//Invoke callback if specified
 		invokeCallback(j)
@@ -245,6 +243,7 @@ func determineProtocol(srcFile string) string {
 	return ""
 }
 
+//Download some file
 func downloadFromUrl(url string) (string, error) {
 	extension := fileExtension(url)
 	fileName := xid.New().String() + extension
