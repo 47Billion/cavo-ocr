@@ -343,7 +343,7 @@ type Job struct {
 	Id            string     `json:"id"`
 	Source        string     `json:"source" validate:"required"`
 	Destination   string     `json:"destination" validate:"required"`
-	Callback      string     `json:"cb" validate:"omitempty,url"`
+	Callback      string     `json:"cb"`
 	Status        string     `json:"status"` //Can be QUEUED/IN_PROGRESS/COMPLETED/ERRORED
 	FilesToDelete *list.List `json:"-"`
 }
