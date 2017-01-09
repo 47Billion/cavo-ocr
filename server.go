@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
 	"os/exec"
 	"path"
@@ -296,12 +297,17 @@ func doOcr(job *Job) error {
 }
 
 func invokeCallback(j *Job) {
-	callbackUrl := j.Callback + "?id=" + j.Id + "&status=" + j.Status
-	log.Info("=>invokeCallback", callbackUrl)
+
 	if len(j.Callback) != 0 {
+		cbUrl := url.Parse(j.Callback)
+		cbUrl.Query().Set("id", j.Id)
+		cbUrl.Query().Set("status", j.Status)
+		//		callbackUrl := j.Callback + "?id=" + j.Id + "&status=" + j.Status
+		log.Info("=>invokeCallback", cbUrl.String())
 		http.Get(callbackUrl)
 		return
 	}
+
 	log.Info("=>invokeCallback Callback not specified skipping...", j.Id)
 }
 
@@ -341,6 +347,6 @@ type Job struct {
 	Source        string     `json:"source" validate:"required"`
 	Destination   string     `json:"destination" validate:"required"`
 	Callback      string     `json:"cb"`
-	Status        string     `json:"status"` //Can be QUEUED/IN_PROGRESS/COMPLETED/ERRORED
+	Status        string     `json:"status"` //Can be WAIT/PROGRESS/FINISH/ERROR
 	FilesToDelete *list.List `json:"-"`
 }
