@@ -291,7 +291,7 @@ func doOcr(job *Job) error {
 }
 
 func invokeCallback(j *Job) {
-	callbackUrl := j.Callback + "?jobId=" + j.Id + "status=" + j.Status
+	callbackUrl := j.Callback + "?jobId=" + j.Id + "&status=" + j.Status
 	log.Println("=>invokeCallback", callbackUrl)
 	if len(j.Callback) != 0 {
 		http.Get(callbackUrl)
@@ -307,6 +307,7 @@ func execCommand(cmdName string, cmdArgs []string) error {
 	)
 	//	cmdName := "git"
 	//	cmdArgs := []string{"rev-parse", "--verify", "HEAD"}
+	log.Println("execCommand", cmdName,cmdArgs )
 	if cmdOut, err = exec.Command(cmdName, cmdArgs...).Output(); err != nil {
 		log.Println("There was an error running command: ", err)
 		return err
