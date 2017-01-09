@@ -220,6 +220,7 @@ func processJob(job *Job) error {
 		} else {
 			//Add source in list of files to be deleted after job completion
 			job.FilesToDelete.PushBack(job.Source)
+			job.FilesToDelete.PushBack(tiffName)
 			job.Source = tiffName
 		}
 
