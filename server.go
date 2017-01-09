@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"os"
 	"os/exec"
@@ -18,6 +17,7 @@ import (
 	"github.com/rs/xid"
 	"gopkg.in/gin-gonic/gin.v1"
 	"gopkg.in/go-playground/validator.v9"
+	log "./logger"
 )
 
 const (
@@ -47,23 +47,24 @@ var validation = validator.New()
 func convertHandler(ctx *gin.Context) {
 	//Generate a unique id for this job here
 	jobId := xid.New().String()
-	log.Println("=>convertHandler", jobId)
+
+	log.Info("=>convertHandler", jobId)
 	var job Job
 
 	if err := ctx.BindJSON(&job); nil != err {
-		log.Println("=>convertHandler Invalid json", err)
+		log.Info("=>convertHandler Invalid json", err)
 		ctx.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": "job queue limit exceeded"})
 		return
 	}
 
 	if validationErr := validation.Struct(job); nil != validationErr {
-		log.Println("=>convertHandler invalid input", validationErr)
+		log.Info("=>convertHandler invalid input", validationErr)
 		ctx.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": validationErr.Error()})
 		return
 	}
 
 	if len(jobs) == MAX_QUEUE_LENGTH {
-		log.Println("=>Channel length", len(jobs))
+		log.Info("=>Channel length", len(jobs))
 		ctx.JSON(http.StatusTooManyRequests, gin.H{"status": "error", "message": "job queue limit exceeded"})
 		return
 	}
@@ -72,15 +73,15 @@ func convertHandler(ctx *gin.Context) {
 	job.FilesToDelete = list.New()
 
 	if err := checkForValidSourceAndDestination(&job); nil != err {
-		log.Println("=>convertHandler invalid input source or destination", err)
+		log.Info("=>convertHandler invalid input source or destination", err)
 		ctx.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": err.Error()})
 		return
 	}
 
-	cache.Set(job.Id, &job, time.Minute*10)
+	cache.Set(job.Id, &job, time.Minute*30)
 
 	jobs <- &job
-	log.Println("=>Channel length", len(jobs))
+	log.Info("=>Channel length", len(jobs))
 	ctx.JSON(http.StatusAccepted, gin.H{"status": "ok", "message": "request submitted", "data": job})
 }
 
@@ -88,7 +89,7 @@ func convertHandler(ctx *gin.Context) {
 func jobStatusHandler(ctx *gin.Context) {
 	jobId := ctx.Query("id")
 
-	log.Println("=>jobStatusHandler", jobId)
+	log.Info("=>jobStatusHandler", jobId)
 	if cacheItem := cache.Get(jobId); cacheItem != nil {
 		job := cache.Get(jobId).Value().(*Job)
 		ctx.JSON(http.StatusOK, gin.H{"status": "ok", "data": job})
@@ -99,7 +100,7 @@ func jobStatusHandler(ctx *gin.Context) {
 }
 
 func main() {
-	log.Println("starting server...")
+	log.Info("starting server...")
 	if len(os.Args) != 4 {
 		panic("USAGE [server WORKER_COUNT QUEUE_LENGTH PORT]")
 		return
@@ -119,7 +120,7 @@ func main() {
 	}
 
 	if port, err := strconv.Atoi(os.Args[3]); err != nil {
-		log.Println("Invalid port", port)
+		log.Info("Invalid port", port)
 		panic("Invalid port specified must be an integer")
 		return
 	}
@@ -143,7 +144,7 @@ func main() {
 	}
 
 	go resultProcessor(results)
-	log.Fatal(http.ListenAndServe(":"+os.Args[3], router))
+	log.Error(http.ListenAndServe(":"+os.Args[3], router))
 	//http.ListenAndServe(":8585", nil)
 
 }
@@ -161,7 +162,7 @@ func worker(id int, jobs <-chan *Job, results chan<- *Job) {
 
 		//		time.Sleep(time.Second * 10)
 		//		j.Status = STATUS_COMPLETE
-		log.Println("worker", id, "finished job", j)
+		log.Info("worker", id, "finished job", j)
 		//Invoke callback if specified
 		invokeCallback(j)
 		results <- j
@@ -172,7 +173,7 @@ func worker(id int, jobs <-chan *Job, results chan<- *Job) {
 func resultProcessor(results <-chan *Job) {
 	// Finally we collect all the results of the work.
 	for result := range results {
-		//		log.Println("got result", result)
+		//		log.Info("got result", result)
 		filesToDelete := result.FilesToDelete
 		// Iterate through list and print its contents.
 		for e := filesToDelete.Front(); e != nil; e = e.Next() {
@@ -269,7 +270,7 @@ func downloadFromUrl(url string) (string, error) {
 		return "", errors.New("Could not write file to disk")
 	}
 
-	log.Println("File download complete - "+fileName, n)
+	log.Info("File download complete - "+fileName, n)
 	return fileName, nil
 }
 
@@ -278,7 +279,7 @@ func fileExtension(url string) string {
 }
 
 func convertToTiff(job *Job) (string, error) {
-	log.Println("=>convertToTiff", job)
+	log.Info("=>convertToTiff", job)
 	tiffFileName := xid.New().String() + ".tiff"
 
 	cmdName := "convert"
@@ -289,7 +290,7 @@ func convertToTiff(job *Job) (string, error) {
 }
 
 func doOcr(job *Job) error {
-	log.Println("=>doOcr", job)
+	log.Info("=>doOcr", job)
 	cmdName := "tesseract"
 	cmdArgs := []string{job.Source, job.Destination, "pdf"}
 
@@ -298,12 +299,12 @@ func doOcr(job *Job) error {
 
 func invokeCallback(j *Job) {
 	callbackUrl := j.Callback + "?jobId=" + j.Id + "&status=" + j.Status
-	log.Println("=>invokeCallback", callbackUrl)
+	log.Info("=>invokeCallback", callbackUrl)
 	if len(j.Callback) != 0 {
 		http.Get(callbackUrl)
 		return
 	}
-	log.Println("=>invokeCallback Callback not specified skipping...", j.Id)
+	log.Info("=>invokeCallback Callback not specified skipping...", j.Id)
 }
 
 func execCommand(cmdName string, cmdArgs []string) error {
@@ -313,18 +314,18 @@ func execCommand(cmdName string, cmdArgs []string) error {
 	)
 	//	cmdName := "git"
 	//	cmdArgs := []string{"rev-parse", "--verify", "HEAD"}
-	log.Println("execCommand", cmdName, cmdArgs)
+	log.Info("execCommand", cmdName, cmdArgs)
 	if cmdOut, err = exec.Command(cmdName, cmdArgs...).Output(); err != nil {
-		log.Println("There was an error running command: ", err)
+		log.Info("There was an error running command: ", err)
 		return err
 	}
 	output := string(cmdOut)
-	log.Println("Command output", output)
+	log.Info("Command output", output)
 	return nil
 }
 
 func checkForValidSourceAndDestination(job *Job) error {
-	log.Println("=>checkForValidSourceAndDestination", job.Source, job.Destination)
+	log.Info("=>checkForValidSourceAndDestination", job.Source, job.Destination)
 	if protocol := determineProtocol(job.Source); protocol == "file" || protocol == "" {
 		if _, err := os.Stat(job.Source); err != nil {
 			return errors.New("Could not read source file")
@@ -344,14 +345,4 @@ type Job struct {
 	Callback      string     `json:"cb"`
 	Status        string     `json:"status"` //Can be QUEUED/IN_PROGRESS/COMPLETED/ERRORED
 	FilesToDelete *list.List `json:"-"`
-}
-
-func init() {
-	f, err := os.OpenFile("/var/log/ocr/ocr.log", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
-	if err != nil {
-		log.Fatalf("error opening file: %v", err)
-	}
-	defer f.Close()
-
-	log.SetOutput(f)
 }

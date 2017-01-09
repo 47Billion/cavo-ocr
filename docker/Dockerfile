@@ -25,8 +25,6 @@ RUN apt-get install -y -q --no-install-recommends \
     libcurl4-openssl-dev \
     libgif-dev \
     libicu-dev \
-    #libjpeg62-turbo-dev \
-    #libpango1.0-dev \
     libssl-dev \
     libudev-dev \
     make \
@@ -35,7 +33,6 @@ RUN apt-get install -y -q --no-install-recommends \
     rsyslog \
     software-properties-common \
     sudo \
-    #telnet \
     wget \
     vim
 
@@ -64,33 +61,14 @@ RUN apt-get install -y libleptonica-dev
 #Get specific commit from tesseract for date 21-12-2016
 RUN git clone https://github.com/tesseract-ocr/tesseract.git && cd tesseract && git checkout df8dcf18347e6cdc1110b67e58cbd6ca1150f7d2 . && ./autogen.sh && ./configure && make && make install && ldconfig && cd ..
 
-#RUN apt-get install -y tesseract-ocr
-#RUN apt-get install -y tesseract-ocr-eng
-#RUN mkdir /usr/local/share/tessdata
 ENV TESSDATA_PREFIX /usr/local/share/tessdata
 
 #download data files for tesseract
 RUN wget https://github.com/tesseract-ocr/tessdata/raw/master/eng.traineddata -P /usr/local/share/tessdata/
 RUN wget https://github.com/tesseract-ocr/tessdata/raw/master/osd.traineddata -P /usr/local/share/tessdata/
 
-#RUN apt-get install -y tesseract-ocr
-
 RUN apt-get -y autoclean
 RUN rm -rf /var/lib/apt/lists/*
-
-ENV NVM_DIR /usr/local/nvm
-#ENV NODE_VERSION 4.5.0
-
-# Install nvm with node and npm
-#RUN curl -o- https://raw.githubusercontent.com/creationix/nvm/v0.26.0/install.sh | bash \
-#    && source $NVM_DIR/nvm.sh \
-#    && nvm install $NODE_VERSION \
-#    && nvm alias default $NODE_VERSION \
-#    && nvm use default
-
-# Set up our PATH correctly so we don't have to long-reference npm, node, &c.
-#ENV NODE_PATH $NVM_DIR/versions/node/v$NODE_VERSION/lib/node_modules
-#ENV PATH      $NVM_DIR/versions/node/v$NODE_VERSION/bin:$PATH
 
 ENV GOVERSION 1.7.1
 ENV GOROOT /opt/go
@@ -108,9 +86,6 @@ RUN mkdir -p /var/www/api
 RUN mkdir -p /var/log/ocr
 
 WORKDIR /var/www
-
-# Install PM2
-#RUN npm install pm2 -g
 
 # add start.sh script
 ADD start.sh /var/www
