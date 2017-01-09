@@ -136,7 +136,7 @@ func main() {
 	// them work and collect their results. We make 2
 	// channels for this.
 	jobs = make(chan *Job, MAX_QUEUE_LENGTH)
-	results := make(chan *Job, 100)
+	results := make(chan *Job, 1000)
 
 	// This starts up 3 workers, initially blocked
 	// because there are no jobs yet.
