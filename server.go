@@ -107,8 +107,8 @@ func main() {
 		panic("USAGE [server WORKER_COUNT QUEUE_LENGTH PORT]")
 		return
 	}
-	if workerCount, err := strconv.Atoi(os.Args[1]); err != nil || workerCount > 9 {
-		panic("Invalid worker count specified must be an integer less than 9")
+	if workerCount, err := strconv.Atoi(os.Args[1]); err != nil || workerCount > 64 {
+		panic("Invalid worker count specified must be an integer less than 64")
 		return
 	} else {
 		NO_OF_WORKERS = workerCount
